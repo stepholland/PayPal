@@ -9,6 +9,7 @@ use App\Mail\MembershipPurchased;
 use App\Mail\EventPurchased;
 use Carbon\Carbon;
 use App\User;
+use App\Order;
 use Illuminate\Support\Facades\Auth;
 /** All Paypal Details class **/
 
@@ -18,7 +19,7 @@ use Validator;
 use URL;
 use Session;
 use Redirect;
-
+use Notification;
 /** All Paypal Details class **/
 use PayPal\Rest\ApiContext;
 use PayPal\Auth\OAuthTokenCredential;
@@ -33,9 +34,12 @@ use PayPal\Api\ExecutePayment;
 use PayPal\Api\PaymentExecution;
 use PayPal\Api\Transaction;
 use Illuminate\Support\Facades\Input;
+use App\Notifications\TicketSell;
+use App\Notifications\TicketPurchase;
+use Illuminate\Notifications\Notifiable;
 
 class PaymentController extends HomeController
-{
+{use Notifiable;
     const EMAIL1 = 'snayak04.96@gmail.com';
     private $amount, $title;
     private $_api_context;
@@ -58,17 +62,18 @@ class PaymentController extends HomeController
     }
 
     public function eventConfirmation(Request $request){
-        $EVENT_PRICE = 249;
+        $EMERALD_PRICE = 249;
+        $TURQUOISE_PRICE = 150;
+        $BANQUET_PRICE = 100;
         $CHILD_PRICE = 15;
         $EVENT_TITLE = "Annual CME Event";
-        $ticket = $request->get('ticket');
-        $childTicket = $request->get('child-ticket');
-        $name = $request->get('name');
-        $phone = $request->get('phone');
-        $email = $request->get('email');
-        $total = $EVENT_PRICE*$ticket + $CHILD_PRICE*$childTicket;
+        $emerald=$request->get('emerald');
+        $turquoise=$request->get('turquoise');
+        $banquet=$request->get('banquet');
+        $child=$request->get('child');
+        $total = $EMERALD_PRICE*$emerald + $TURQUOISE_PRICE*$turquoise + $BANQUET_PRICE*$banquet + $CHILD_PRICE*$child;
         $amount = $total;
-        return view('payment.eventConfirm', compact('EVENT_TITLE', 'amount', 'phone', 'ticket', 'email'));
+        return view('payment.eventConfirm', compact('EVENT_TITLE', 'amount', 'request'));
     }
 
     public function paymentConfirmation(Request $request){
@@ -85,6 +90,18 @@ class PaymentController extends HomeController
     }
 
     public function proceed(Request $request){
+      $order=Order::create([
+        'item'=>$request->item,
+        'amount'=>$request->amount,
+        'emerald'=>$request->emerald,
+        'turquoise'=>$request->turquoise,
+        'banquet'=>$request->banquet,
+        'child'=>$request->child,
+        'name'=>$request->name,
+        'phone'=>$request->phone,
+        'email'=>$request->email
+      ]);
+      \Session::put('orderID',$order->id);
         $payer = new Payer();
         $payer->setPaymentMethod('paypal');
         $item_1 = new Item();
@@ -103,7 +120,7 @@ class PaymentController extends HomeController
             ->setDescription($request->get('item'));
         $redirect_urls = new RedirectUrls();
         $redirect_urls->setReturnUrl(route('status')) /** Specify return URL **/
-            ->setCancelUrl(route('status'));
+            ->setCancelUrl(route('events'));
         $payment = new Payment();
         $payment->setIntent('Sale')
             ->setPayer($payer)
@@ -115,13 +132,13 @@ class PaymentController extends HomeController
         } catch (\PayPal\Exception\PPConnectionException $ex) {
             if (\Config::get('app.debug')) {
                 \Session::put('error','Connection timeout');
-                return Redirect::route('payment');
+                return Redirect::route('events');
                 /** echo "Exception: " . $ex->getMessage() . PHP_EOL; **/
                 /** $err_data = json_decode($ex->getData(), true); **/
                 /** exit; **/
             } else {
                 \Session::put('error','Some error occur, sorry for inconvenient');
-                return Redirect::route('payment');
+                return Redirect::route('events');
                 /** die('Some error occur, sorry for inconvenient'); **/
             }
         }
@@ -135,59 +152,100 @@ class PaymentController extends HomeController
         Session::put('paypal_payment_id', $payment->getId());
         if(isset($redirect_url)) {
             /** redirect to paypal **/
-            $this->storeToTemp($payment->getId(), $request->get('amount'), $request->get('item'));
+            // $this->storeToTemp($payment->getId(), $request->get('amount'),$request->get('email'), $request->get('item'));
             //$this->received($request->get('amount'), $request->get('item'),  $payment->getId());
             return Redirect::away($redirect_url);
         }
         \Session::put('error','Unknown error occurred');
-        return Redirect::route('home');
+        return Redirect::route('events');
     }
 
-    
-    public function storeToTemp($id, $amount, $title){
+
+    public function storeToTemp($id, $amount,$email, $title){
         DB::table('temp')->insertGetId ([
             'amount'=>$amount,
             'title'=>$title,
-            'email'=>auth()->user()->email,
+            'email'=>$email,
             'payID'=>$id
         ]);
     }
-    
+
     public function eventProcess(Request $req){
 
     }
 
+    // public function getPaymentStatus()
+    // {
+    //     /** Get the payment ID before session clear **/
+    //     $payment_id = Session::get('paypal_payment_id');
+    //     /** clear the session payment ID **/
+    //     Session::forget('paypal_payment_id');
+    //     if (empty(Input::get('PayerID')) || empty(Input::get('token'))) {
+    //         \Session::put('error','Payment failed');
+    //         return redirect()->route('payment')->with('error', 'Payment failed!');
+    //     }
+    //     $payment = Payment::get($payment_id, $this->_api_context);
+    //     /** PaymentExecution object includes information necessary **/
+    //     /** to execute a PayPal account payment. **/
+    //     /** The payer_id is added to the request query parameters **/
+    //     /** when the user is redirected from paypal back to your site **/
+    //     $execution = new PaymentExecution();
+    //     $execution->setPayerId(Input::get('PayerID'));
+    //     /**Execute the payment **/
+    //     $result = $payment->execute($execution, $this->_api_context);
+    //     /** dd($result);exit; /** DEBUG RESULT, remove it later **/
+    //     if ($result->getState() == 'approved') {
+    //         $this->received();
+    //         /** it's all right **/
+    //         /** Here Write your database logic like that insert record or value in database if you want **/
+    //         \Session::put('success','Payment success');
+    //         return  Redirect::route('home');
+    //     }
+    //     DB::table('temp')->where('email', auth()->user()->email)->delete();
+    //    // $this->notReceived(Input::get('PayerID'));
+    //     \Session::put('error','Payment failed');
+    //     return Redirect::route('home');
+    // }
+
     public function getPaymentStatus()
     {
-        /** Get the payment ID before session clear **/
-        $payment_id = Session::get('paypal_payment_id');
-        /** clear the session payment ID **/
-        Session::forget('paypal_payment_id');
-        if (empty(Input::get('PayerID')) || empty(Input::get('token'))) {
-            \Session::put('error','Payment failed');
-            return redirect()->route('payment')->with('error', 'Payment failed!');
-        }
-        $payment = Payment::get($payment_id, $this->_api_context);
-        /** PaymentExecution object includes information necessary **/
-        /** to execute a PayPal account payment. **/
-        /** The payer_id is added to the request query parameters **/
-        /** when the user is redirected from paypal back to your site **/
-        $execution = new PaymentExecution();
-        $execution->setPayerId(Input::get('PayerID'));
-        /**Execute the payment **/
-        $result = $payment->execute($execution, $this->_api_context);
-        /** dd($result);exit; /** DEBUG RESULT, remove it later **/
-        if ($result->getState() == 'approved') { 
-            $this->received();
-            /** it's all right **/
-            /** Here Write your database logic like that insert record or value in database if you want **/
-            \Session::put('success','Payment success');
-            return  Redirect::route('home');
-        }
-        DB::table('temp')->where('email', auth()->user()->email)->delete();
-       // $this->notReceived(Input::get('PayerID'));
-        \Session::put('error','Payment failed');
-        return Redirect::route('home');
+      $order=Order::where('id',Session::get('orderID'))->firstOrFail();
+      /** Get the payment ID before session clear **/
+      $payment_id = Session::get('paypal_payment_id');
+      $order->update([
+        'paypal'=>$payment_id,
+      ]);
+      /** clear the session payment ID **/
+      Session::forget('paypal_payment_id');
+      if (empty(Input::get('PayerID')) || empty(Input::get('token'))) {
+        \Session::put('error', 'Payment failed');
+        return redirect(url('/events'))->with('errorMessage','Something is wrong, please try again or contact with the admin.');
+
+      }
+      $payment = Payment::get($payment_id, $this->_api_context);
+      $execution = new PaymentExecution();
+      $execution->setPayerId(Input::get('PayerID'));
+      /**Execute the payment **/
+      $result = $payment->execute($execution, $this->_api_context);
+      if ($result->getState() == 'approved') {
+          \Session::put('success', 'Payment success');
+
+        //updating our order table on successfull checkout
+          $order->update([
+            'status'=>'payment succeeded',
+          ]);
+
+        //sending notification to admin and user
+        $arr=['order'=>$order];
+        Notification::route('mail', 'appnaok2018@gmail.com')
+            ->notify(new TicketSell($arr));
+        Notification::route('mail', 'appnaok2018@gmail.com')
+            ->notify(new TicketPurchase($arr));
+
+        return redirect(url('/events'))->with('message','Your payment for ticket is successfull');
+      }else{
+        return redirect(url('/events'))->with('errorMessage','Something is wrong, please try again or contact with the admin.');
+      }
     }
 
 
@@ -204,12 +262,12 @@ class PaymentController extends HomeController
             //retrieve value from temp table
             $customer = DB::table('temp')->where('email', auth()->user()->email)->get();
             $user = User::where('email', auth()->user()->email)->firstOrFail(); //get user
-            
-            
+
+
             if(strcmp('Annual', $customer[0]->title)==0){
                 $now = Carbon::now();
                 $user->membershipend = $now->addYear();
-            } 
+            }
             $user->membership = $customer[0]->title;
             $user->save();
             DB::table('temp')->where('email', auth()->user()->email)->delete();
@@ -224,5 +282,5 @@ class PaymentController extends HomeController
 
         }
     }
-    
+
 }

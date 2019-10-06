@@ -24,7 +24,7 @@
 
 	<link href="https://fonts.googleapis.com/css?family=Oswald:300,400,500,700|Roboto:300,400,700" rel="stylesheet">
 
-	
+
 
 
 	<!-- Stylesheets -->
@@ -54,7 +54,7 @@
 
 
 
-	
+
 
 <!-- Page Preloder -->
 
@@ -88,8 +88,8 @@
 	<script src="{{asset('js/owl.carousel.min.js')}}"></script>
 	<script src="{{asset('js/bootstrap.min.js')}}"></script>
 	<script src="{{asset('js/circle-progress.min.js')}}"></script>
+  <script src="{{asset('js/magnific-popup.min.js')}}"></script>
 	<script src="{{asset('js/main.js')}}"></script>
-	<script src="{{asset('js/magnific-popup.min.js')}}"></script>
 
 </body>
 

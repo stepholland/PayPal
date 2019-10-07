@@ -104,7 +104,7 @@
                     <div class="input-group-append">
                         <div class="row" style="margin-bottom:10px;">
                             <div class="col-md-6">
-                                <a href="/event" class="btn btn-default">Edit</a>
+                                <a href="{{url('/events')}}" class="btn btn-default">Edit</a>
                             </div>
                             <div class="col-md-6">
                               <button type="submit">

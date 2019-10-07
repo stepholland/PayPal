@@ -51,10 +51,13 @@ Route::get('/join', 'PagesController@register');
 Route::post('/payment', 'PaymentController@paymentConfirmation')->name('confirm');
 Route::post('/proceed', 'PaymentController@proceed')->name('proceed');
 Route::get('/proceed', 'PaymentController@getPaymentStatus')->name('status');
+//event paypal routes
+Route::post('/event', 'EventPaymentController@eventConfirmation')->name('eventConfirm');
+Route::post('/event/proceed', 'EventPaymentController@eventProceed')->name('event.proceed');
+Route::get('/event/proceed', 'EventPaymentController@getEventPaymentStatus')->name('events.status');
 
 Route::post('/eventProcess', 'PaymentController@eventProcess')->name('eventProcess');
 Route::get('/event', 'PagesController@event')->name('event');
-Route::post('/event', 'PaymentController@eventConfirmation')->name('eventConfirm');
 Route::get('/lifetime', 'PagesController@lifetimeDirectory')->name('lifetime');
 
 //TEST
@@ -67,4 +70,3 @@ Route::get('/lifetime', 'PagesController@lifetimeDirectory')->name('lifetime');
 // Route::get('paypal', array('as' => 'status','uses' => 'PaypalController@getPaymentStatus',));
 //Personal info and membership
 Auth::routes();
-

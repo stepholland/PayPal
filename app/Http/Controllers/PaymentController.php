@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 use DB;
 use App\Quotation;
@@ -11,14 +10,12 @@ use Carbon\Carbon;
 use App\User;
 use Illuminate\Support\Facades\Auth;
 /** All Paypal Details class **/
-
 use App\Http\Requests;
 use Illuminate\Http\Request;
 use Validator;
 use URL;
 use Session;
 use Redirect;
-
 /** All Paypal Details class **/
 use PayPal\Rest\ApiContext;
 use PayPal\Auth\OAuthTokenCredential;
@@ -33,7 +30,6 @@ use PayPal\Api\ExecutePayment;
 use PayPal\Api\PaymentExecution;
 use PayPal\Api\Transaction;
 use Illuminate\Support\Facades\Input;
-
 class PaymentController extends HomeController
 {
     const EMAIL1 = 'snayak04.96@gmail.com';
@@ -46,7 +42,6 @@ class PaymentController extends HomeController
      */
     public function __construct()
     {
-
         /** setup PayPal api context **/
         $paypal_conf = \Config::get('paypal');
         $this->_api_context = new ApiContext(new OAuthTokenCredential($paypal_conf['client_id'], $paypal_conf['secret']));
@@ -56,7 +51,6 @@ class PaymentController extends HomeController
         $amount += .30;
         return $amount / (1 - .029);
     }
-
     public function eventConfirmation(Request $request){
         $EVENT_PRICE = 249;
         $CHILD_PRICE = 15;
@@ -70,7 +64,6 @@ class PaymentController extends HomeController
         $amount = $total;
         return view('payment.eventConfirm', compact('EVENT_TITLE', 'amount', 'phone', 'ticket', 'email'));
     }
-
     public function paymentConfirmation(Request $request){
         if(!auth()->user()->membership){
             $amount = $request->input('amount');
@@ -83,7 +76,6 @@ class PaymentController extends HomeController
             return view('payment.confirm',  compact('title', 'amount'));
         }
     }
-
     public function proceed(Request $request){
         $payer = new Payer();
         $payer->setPaymentMethod('paypal');
@@ -143,7 +135,6 @@ class PaymentController extends HomeController
         return Redirect::route('home');
     }
 
-    
     public function storeToTemp($id, $amount, $title){
         DB::table('temp')->insertGetId ([
             'amount'=>$amount,
@@ -152,11 +143,9 @@ class PaymentController extends HomeController
             'payID'=>$id
         ]);
     }
-    
+
     public function eventProcess(Request $req){
-
     }
-
     public function getPaymentStatus()
     {
         /** Get the payment ID before session clear **/
@@ -177,7 +166,7 @@ class PaymentController extends HomeController
         /**Execute the payment **/
         $result = $payment->execute($execution, $this->_api_context);
         /** dd($result);exit; /** DEBUG RESULT, remove it later **/
-        if ($result->getState() == 'approved') { 
+        if ($result->getState() == 'approved') {
             $this->received();
             /** it's all right **/
             /** Here Write your database logic like that insert record or value in database if you want **/
@@ -189,8 +178,6 @@ class PaymentController extends HomeController
         \Session::put('error','Payment failed');
         return Redirect::route('home');
     }
-
-
     public function notReceived($payID){
         $user = User::where('transaction', $payID)->firstOrFail();
         $user->transaction = NULL;
@@ -198,18 +185,17 @@ class PaymentController extends HomeController
         $user->membershipend = NULL;
         $uesr->save();
     }
-
     public function received(){
         try{
             //retrieve value from temp table
             $customer = DB::table('temp')->where('email', auth()->user()->email)->get();
             $user = User::where('email', auth()->user()->email)->firstOrFail(); //get user
-            
-            
+
+
             if(strcmp('Annual', $customer[0]->title)==0){
                 $now = Carbon::now();
                 $user->membershipend = $now->addYear();
-            } 
+            }
             $user->membership = $customer[0]->title;
             $user->save();
             DB::table('temp')->where('email', auth()->user()->email)->delete();
@@ -221,8 +207,7 @@ class PaymentController extends HomeController
             ->send($sendEmail);
         }
         catch(Exception $e){
-
         }
     }
-    
+
 }

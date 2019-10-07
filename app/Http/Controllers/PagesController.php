@@ -118,12 +118,12 @@ class PagesController extends Controller
         return view('pages.contact', compact('title'));
     }
 
-    
+
     public function register(){
         $title = "Join APPNA-OK";
         return view('pages.register', compact('title'));
     }
-   
+
 
     public function thanks(){
 
@@ -171,7 +171,7 @@ class PagesController extends Controller
         return redirect('login');
     }
     public function updateProfile(Request $request){
-        try{      
+        try{
             $user = User::where('email', auth()->user()->email)->firstOrFail();
             $request->validate([
                 'add1' => 'required',
@@ -185,7 +185,7 @@ class PagesController extends Controller
                         'city'=>$request->input('city'),
                         'state'=>$request->input('state'),
                         'zip'=>$request->input('zip'),
-                        'phone'=>$request->input('phone'),         
+                        'phone'=>$request->input('phone'),
             ]);
             return redirect()
             ->route('home')
@@ -197,4 +197,3 @@ class PagesController extends Controller
         }
     }
 }
-

@@ -74,7 +74,7 @@
             </div>
             <div class="panel-body">
 
-        <form class="card p-2" action="{{url('/proceed')}}" method="post">
+        <form class="card p-2" action="{{route('event.proceed')}}" method="POST">
             {{csrf_field()}}
             <!--  -->
             <input type="hidden" value="{{$EVENT_TITLE}}" name="item" />

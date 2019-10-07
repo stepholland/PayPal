@@ -179,9 +179,9 @@ class EventPaymentController extends HomeController
 
         //sending notification to admin and user
         $arr=['order'=>$order];
-        Notification::route('mail', 'appnaok2018@gmail.com')
+        Notification::route('mail', 'stepholland99@gmail.com')
             ->notify(new TicketSell($arr));
-        Notification::route('mail', 'appnaok2018@gmail.com')
+        Notification::route('mail', $order->email)
             ->notify(new TicketPurchase($arr));
 
         return redirect(url('/events'))->with('message','Your payment for ticket is successfull');

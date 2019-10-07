@@ -59,7 +59,7 @@
                             </div>
                             <div class="col-sm-2  form-check-inline">
                                 <label class="form-check-label">
-                                    <input type="radio"  required autofocus class="form-check-input" name="gender" id="gender" value="female"  @if(old('gender') ===  "female") checked="checked" @endif > Female 
+                                    <input type="radio"  required autofocus class="form-check-input" name="gender" id="gender" value="female"  @if(old('gender') ===  "female") checked="checked" @endif > Female
                                 </label>
                             </div>
                                 @if ($errors->has('gender'))
@@ -106,7 +106,7 @@
                         </div>
 
                         <div class="card-header" style="font-weight:700; color:#314504; width:100%; height=100%; background-color:coral; margin-bottom:20px; padding:2px 30%">Personal Information</div>
-                       
+
                         <div class="form-group row">
                             <label for="school" class="col-md-4 col-form-label text-md-right">{{ __('Medical School') }}</label>
                             <div class="col-md-6">

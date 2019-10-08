@@ -10,6 +10,7 @@ use App\Mail\EventPurchased;
 use Carbon\Carbon;
 use App\User;
 use App\Order;
+use App\Ticket;
 use Illuminate\Support\Facades\Auth;
 /** All Paypal Details class **/
 
@@ -34,15 +35,13 @@ use PayPal\Api\ExecutePayment;
 use PayPal\Api\PaymentExecution;
 use PayPal\Api\Transaction;
 use Illuminate\Support\Facades\Input;
-use App\Notifications\TicketSell;
-use App\Notifications\TicketPurchase;
-use Illuminate\Notifications\Notifiable;
+use App\Mail\TicketSell;
+use App\Mail\TicketPurchase;
 
 
 
 class EventPaymentController extends HomeController
-{use Notifiable;
-    const EMAIL1 = 'snayak04.96@gmail.com';
+{
     private $amount, $title;
     private $_api_context;
     /**
@@ -61,17 +60,18 @@ class EventPaymentController extends HomeController
 
 
     public function eventConfirmation(Request $request){
-        $EMERALD_PRICE = 249;
-        $TURQUOISE_PRICE = 150;
-        $BANQUET_PRICE = 100;
-        $CHILD_PRICE = 15;
-        $EVENT_TITLE = "Annual CME Event";
-        $emerald=$request->get('emerald');
-        $turquoise=$request->get('turquoise');
-        $banquet=$request->get('banquet');
-        $child=$request->get('child');
-        $total = $EMERALD_PRICE*$emerald + $TURQUOISE_PRICE*$turquoise + $BANQUET_PRICE*$banquet + $CHILD_PRICE*$child;
-        $amount = $total;
+        $EVENT_TITLE="new Event";
+        $allPrices=array();
+        foreach($request->tickets as $ticket=>$units){
+            $thisTicket=Ticket::where('id',$ticket)->first()->price;
+            if($units!=0){
+            array_push($allPrices,$thisTicket*$units);
+            }
+        }
+        $amount = array_sum($allPrices);
+        if($amount==0){
+          return back()->with('errorMessage','choose at least one ticket');
+        }
         return view('payment.eventConfirm', compact('EVENT_TITLE', 'amount', 'request'));
     }
 
@@ -79,15 +79,13 @@ class EventPaymentController extends HomeController
       $order=Order::create([
         'item'=>$request->item,
         'amount'=>$request->amount,
-        'emerald'=>$request->emerald,
-        'turquoise'=>$request->turquoise,
-        'banquet'=>$request->banquet,
-        'child'=>$request->child,
+        'tickets'=>json_encode($request->tickets),
         'name'=>$request->name,
         'phone'=>$request->phone,
         'email'=>$request->email
       ]);
       \Session::put('orderID',$order->id);
+
         $payer = new Payer();
         $payer->setPaymentMethod('paypal');
         $item_1 = new Item();
@@ -176,14 +174,16 @@ class EventPaymentController extends HomeController
           $order->update([
             'status'=>'payment succeeded',
           ]);
+          foreach(json_decode($order->tickets) as $ticket=>$units){
+            $thisTicket=Ticket::where('id',$ticket)->first();
+            $thisTicket->reserves=$thisTicket->reserves-$units;
+            $thisTicket->save();
+          }
 
-        //sending notification to admin and user
-        $arr=['order'=>$order];
-        Notification::route('mail', 'stepholland99@gmail.com')
-            ->notify(new TicketSell($arr));
-        Notification::route('mail', $order->email)
-            ->notify(new TicketPurchase($arr));
 
+        $admin_email='stepholland99@gmail.com';
+        Mail::to($admin_email)->send(new TicketSell($order));
+        Mail::to($order->email)->send(new TicketPurchase($order));
         return redirect(url('/events'))->with('message','Your payment for ticket is successfull');
       }else{
         return redirect(url('/events'))->with('errorMessage','Something is wrong, please try again or contact with the admin.');

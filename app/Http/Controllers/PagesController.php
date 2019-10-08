@@ -14,6 +14,7 @@ use App\Http\Controllers\Controller;
 
 
 use App\User;
+use App\Ticket;
 
 
 
@@ -83,11 +84,9 @@ class PagesController extends Controller
 
 
     public function events(){
-
         $title = 'Events List';
-
-        return view('pages.events', compact('title'));
-
+        $tickets=Ticket::where('status','active')->get();
+        return view('pages.events', compact('title','tickets'));
     }
 
 
